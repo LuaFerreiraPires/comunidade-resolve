@@ -76,7 +76,7 @@
 </div>
 
 <script>
-// 🔥 CONFIG
+//  CONFIG
 const firebaseConfig = {
   apiKey: "AIzaSyB6nqfoRimrzQh4P4tnms5ZgiA8pDcrUJY",
   authDomain: "how9-4be5b.firebaseapp.com",
@@ -92,7 +92,7 @@ const db = firebase.firestore();
 const auth = firebase.auth();
 
 
-// 🔐 LOGIN
+//  LOGIN
 async function login() {
   const email = document.getElementById('emailLogin').value;
   const senha = document.getElementById('senhaLogin').value;
@@ -113,7 +113,7 @@ async function login() {
   }
 }
 
-// 👤 REGISTRAR
+//  REGISTRAR
 async function registrar() {
   const email = document.getElementById('emailCadastro').value;
   const senha = document.getElementById('senhaCadastro').value;
@@ -134,12 +134,12 @@ async function registrar() {
   }
 }
 
-// 🚪 LOGOUT
+//  LOGOUT
 function logout() {
   auth.signOut();
 }
 
-// 🔄 MANTER LOGIN
+//  MANTER LOGIN
 auth.onAuthStateChanged(user => {
   if (user) {
     document.getElementById('loginScreen').style.display = 'none';
@@ -152,7 +152,7 @@ auth.onAuthStateChanged(user => {
 });
 
 
-// 🔥 RESTO DO SEU CÓDIGO (mantido)
+
 
 async function salvarProblema() {
   const titulo = document.getElementById('titulo').value;
