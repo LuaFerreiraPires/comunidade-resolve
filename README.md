@@ -25,13 +25,6 @@ A aplicação foi desenvolvida como parte de um trabalho acadêmico, aplicando c
 - JavaScript
 - Firebase Authentication
 - Firebase Firestore
-
-## Como Executar
-
-1. Abra o projeto no Visual Studio Code  
-2. Execute com a extensão Live Server  
-3. Acesse: http://127.0.0.1:5500  
-
 ## Autor
 
 Luã Ferreira Pires  
