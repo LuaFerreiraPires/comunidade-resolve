@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>Comunidade Resolve</title>
+  <link rel="stylesheet" href="style.css">
+
+  <!-- Firebase compat -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+</head>
+<body>
+
+<div id="loginScreen">
+  <h2>Login</h2>
+
+  <input type="email" id="emailLogin" placeholder="E-mail">
+  <input type="password" id="senhaLogin" placeholder="Senha">
+
+  <button onclick="login()">Entrar</button>
+  <p>Não tem conta?</p>
+  <button onclick="mostrarCadastro()">Criar Conta</button>
+</div>
+
+<div id="cadastroScreen" style="display:none;">
+  <h2>Criar Conta</h2>
+
+  <input type="email" id="emailCadastro" placeholder="E-mail">
+  <input type="password" id="senhaCadastro" placeholder="Senha">
+
+  <button onclick="registrar()">Cadastrar</button>
+  <button onclick="voltarLogin()">Voltar</button>
+</div>
+
+<div id="app" style="display:none;">
+<header>
+  <h2>Comunidade Resolve</h2>
+  <button onclick="logout()">Sair</button>
+</header>
+
+<div class="container">
+
+  <h3>Registrar / Editar Problema</h3>
+  <input type="hidden" id="editId">
+  <input type="text" id="titulo" placeholder="Título">
+  <textarea id="descricao" placeholder="Descrição"></textarea>
+  <input type="file" id="imagem">
+
+  <select id="categoria">
+    <option value="Infraestrutura">Infraestrutura</option>
+    <option value="Segurança">Segurança</option>
+    <option value="Limpeza">Limpeza</option>
+  </select>
+
+  <button onclick="salvarProblema()">Salvar</button>
+
+  <h3>Filtrar</h3>
+  <select id="filtroStatus" onchange="carregarProblemas()">
+    <option value="Todos">Todos</option>
+    <option value="Pendente">Pendente</option>
+    <option value="Resolvido">Resolvido</option>
+  </select>
+
+  <select id="filtroCategoria" onchange="carregarProblemas()">
+    <option value="Todas">Todas Categorias</option>
+    <option value="Infraestrutura">Infraestrutura</option>
+    <option value="Segurança">Segurança</option>
+    <option value="Limpeza">Limpeza</option>
+  </select>
+
+  <h3>Problemas</h3>
+  <div id="lista"></div>
+
+</div>
+</div>
+
+<script>
+// 🔥 CONFIG
+const firebaseConfig = {
+  apiKey: "AIzaSyB6nqfoRimrzQh4P4tnms5ZgiA8pDcrUJY",
+  authDomain: "how9-4be5b.firebaseapp.com",
+  projectId: "how9-4be5b",
+  storageBucket: "how9-4be5b.firebasestorage.app",
+  messagingSenderId: "282928722260",
+  appId: "1:282928722260:web:3399c8cf3fdefd4062d8c1"
+};
+
+firebase.initializeApp(firebaseConfig);
+
+const db = firebase.firestore();
+const auth = firebase.auth();
+
+
+// 🔐 LOGIN
+async function login() {
+  const email = document.getElementById('emailLogin').value;
+  const senha = document.getElementById('senhaLogin').value;
+
+  try {
+    await auth.signInWithEmailAndPassword(email, senha);
+  } catch (error) {
+
+    if (error.code === 'auth/user-not-found') {
+      alert('Conta não existe! Crie uma conta.');
+    } 
+    else if (error.code === 'auth/wrong-password') {
+      alert('Senha incorreta!');
+    } 
+    else {
+      alert(error.message);
+    }
+  }
+}
+
+// 👤 REGISTRAR
+async function registrar() {
+  const email = document.getElementById('emailCadastro').value;
+  const senha = document.getElementById('senhaCadastro').value;
+
+  try {
+    await auth.createUserWithEmailAndPassword(email, senha);
+    alert('Conta criada com sucesso!');
+
+    voltarLogin();
+
+  } catch (error) {
+
+    if (error.code === 'auth/email-already-in-use') {
+      alert('Este e-mail já está cadastrado!');
+    } else {
+      alert(error.message);
+    }
+  }
+}
+
+// 🚪 LOGOUT
+function logout() {
+  auth.signOut();
+}
+
+// 🔄 MANTER LOGIN
+auth.onAuthStateChanged(user => {
+  if (user) {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    carregarProblemas();
+  } else {
+    document.getElementById('loginScreen').style.display = 'block';
+    document.getElementById('app').style.display = 'none';
+  }
+});
+
+
+// 🔥 RESTO DO SEU CÓDIGO (mantido)
+
+async function salvarProblema() {
+  const titulo = document.getElementById('titulo').value;
+  const descricao = document.getElementById('descricao').value;
+  const categoria = document.getElementById('categoria').value;
+  const file = document.getElementById('imagem').files[0];
+  const editId = document.getElementById('editId').value;
+
+  if (!titulo || !descricao) {
+    alert('Preencha tudo');
+    return;
+  }
+
+  let imagemBase64 = '';
+
+  if (file) {
+    const reader = new FileReader();
+
+    reader.onload = async function(e) {
+      imagemBase64 = e.target.result;
+      await salvarNoFirebase(titulo, descricao, categoria, imagemBase64, editId);
+    };
+
+    reader.readAsDataURL(file);
+  } else {
+    await salvarNoFirebase(titulo, descricao, categoria, '', editId);
+  }
+}
+
+function editar(id, p) {
+  document.getElementById('titulo').value = p.titulo;
+  document.getElementById('descricao').value = p.descricao;
+  document.getElementById('categoria').value = p.categoria;
+  document.getElementById('editId').value = id;
+}
+
+function limparFormulario() {
+  document.getElementById('titulo').value = '';
+  document.getElementById('descricao').value = '';
+  document.getElementById('editId').value = '';
+}
+
+async function carregarProblemas() {
+  const lista = document.getElementById('lista');
+  const filtroStatus = document.getElementById('filtroStatus').value;
+  const filtroCategoria = document.getElementById('filtroCategoria').value;
+
+  lista.innerHTML = '';
+
+  const snapshot = await db.collection('problemas').get();
+
+  snapshot.forEach(doc => {
+    const p = doc.data();
+
+    if (filtroStatus !== 'Todos' && p.status !== filtroStatus) return;
+    if (filtroCategoria !== 'Todas' && p.categoria !== filtroCategoria) return;
+
+    lista.innerHTML += `
+      <div class="card">
+        <strong>${p.titulo}</strong>
+        <p>${p.descricao}</p>
+        <p>${p.categoria}</p>
+        ${p.imagem ? `<img src="${p.imagem}" width="100%">` : ''}
+        <p>Status: ${p.status}</p>
+        <button onclick="resolver('${doc.id}')">Resolver</button>
+        <button onclick='editar("${doc.id}", ${JSON.stringify(p)})'>Editar</button>
+        <button onclick="remover('${doc.id}')">Excluir</button>
+      </div>
+    `;
+  });
+}
+
+async function resolver(id) {
+  await db.collection('problemas').doc(id).update({ status: 'Resolvido' });
+  carregarProblemas();
+}
+
+async function remover(id) {
+  if (confirm('Tem certeza?')) {
+    await db.collection('problemas').doc(id).delete();
+    carregarProblemas();
+  }
+}
+
+async function salvarNoFirebase(titulo, descricao, categoria, imagem, editId) {
+  try {
+    if (editId) {
+      await db.collection('problemas').doc(editId).update({
+        titulo,
+        descricao,
+        categoria,
+        imagem
+      });
+    } else {
+      await db.collection('problemas').add({
+        titulo,
+        descricao,
+        categoria,
+        status: 'Pendente',
+        imagem
+      });
+    }
+
+    limparFormulario();
+    carregarProblemas();
+
+  } catch (error) {
+    console.error('Erro ao salvar:', error);
+    alert('Erro ao salvar no Firebase');
+  }
+}
+
+function mostrarCadastro() {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('cadastroScreen').style.display = 'block';
+}
+
+function voltarLogin() {
+  document.getElementById('cadastroScreen').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'block';
+}
+
+</script>
+
+</body>
+</html>
